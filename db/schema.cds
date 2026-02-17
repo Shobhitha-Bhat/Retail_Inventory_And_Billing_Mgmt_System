@@ -20,15 +20,20 @@ entity Categories : cuid, managed {
 }
 
 entity Items : cuid, managed {
-    itemName : String;
-    category : Association to Categories;
-    totStocks:Integer default 0;
+    itemName  : String;
+    category  : Association to Categories;
+    totStocks : Integer default 0;
 }
 
 entity Purchases : cuid, managed {
     customer      : Association to Customers;
     purchaseItems : Composition of many PurchaseItems
                         on purchaseItems.purchase = $self;
+    status        : String enum {
+        Shopping;
+        Paid;
+        PurchaseReturnedAmountRefunded;
+    } default 'Shopping';
 }
 
 entity PurchaseItems : cuid, managed {
