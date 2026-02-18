@@ -154,7 +154,7 @@ module.exports = function () {
             // const newPurchase = await INSERT.into('Purchases').entries({ // customer_ID: customer_ID, status: 'Shopping' // }) 
             // // for (const [item_ID, quantity] of availableItemsIDs) { 
             // // await INSERT.into('PurchaseItems').entries({ purchase_ID: newPurchase.ID, item_ID, quantity })
-            
+
             await INSERT.into('Purchases').entries({
                 customer_ID,
                 status: 'Shopping',
@@ -239,6 +239,50 @@ module.exports = function () {
         }
 
 
+    })
+
+
+    this.on('removeItemsFromPurchase', async(req)=>{
+        const { customer_ID } = req.data;
+        const purchase_ID = req.params[0].ID;
+        const missingItemsFromPurchase=[];
+        const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
+        if (!purchaseExists) {
+            return req.reject(404, 'Purchase Doesnt Exist')
+        }
+        if (purchaseExists.status === 'Completed') {
+            return req.reject(400, 'Purchase Already Paid. Only refund Possible.')
+        }
+        if (purchaseExists.status === 'PurchaseReturnedAmountRefunded') {
+            return req.reject(400, 'Purchase Already Cancelled.')
+        }
+        if (purchaseExists.status === 'Shopping') {
+            const ItemsinPurchaseExists = await SELECT.from('PurchaseItems').where({purchase_ID})
+
+            if(ItemsinPurchaseExists){
+                for(const row of req.data.purchaseItems){
+                    const item_ID=row.item_ID;
+                    const quantity = row.quantity;
+                    const itemExists = await SELECT.one.from('PurchaseItems').where({purchase_ID,item_ID:item_ID})
+                    if(itemExists){
+                        await UPDATE('Items').set({ totStocks: { '+=': quantity } }).where({ ID: item_ID });
+                        await DELETE.from('PurchaseItems').where({purchase_ID:purchase_ID,item_ID:item_ID})
+                    }
+                    else{
+                        missingItemsFromPurchase.push(item_ID)
+                    }
+                    
+                }
+                if (missingItemsFromPurchase.length > 0) {
+               return { message: `Some items are not in Purchase List - ${JSON.stringify(missingItemsFromPurchase)}` };
+           }
+           return { message: "Items removed from purchase and reStocked"};
+            }
+
+            else{
+                return {message:"Item already Removed"}
+            }
+            }
     })
 
 

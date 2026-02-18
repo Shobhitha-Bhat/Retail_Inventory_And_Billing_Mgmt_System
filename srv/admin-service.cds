@@ -11,10 +11,14 @@ service AdminService {
 
     entity Purchases as projection on db.Purchases
         actions {
-            action removeItemsFromPurchase();
-            action updateQuantityofItems();
+            action removeItemsFromPurchase(customer_ID: UUID,
+                                           purchaseItems: many {
+                item_ID  : UUID;
+                quantity : Integer
+            });
             action payForPurchase(customer_ID: UUID, purchase_ID: UUID);
             action returnPurchase(customer_ID: UUID);
+            // action updateQuantityofItems(); same as purchaseItems
         };
 
     action purchaseItems(customer_ID: UUID,
