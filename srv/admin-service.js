@@ -150,13 +150,19 @@ module.exports = function () {
         if (!purchaseExists) {
 
             //INSERT the NEW purchase row into purchases also Purchaseitems
-            const newPurchase = await INSERT.into('Purchases').entries({
-                customer_ID: customer_ID, status: 'Shopping'
-            })
 
-            for (const [item_ID, quantity] of availableItemsIDs) {
-                await INSERT.into('PurchaseItems').entries({ purchase_ID: newPurchase.ID, item_ID, quantity })
-            }
+            // const newPurchase = await INSERT.into('Purchases').entries({ // customer_ID: customer_ID, status: 'Shopping' // }) 
+            // // for (const [item_ID, quantity] of availableItemsIDs) { 
+            // // await INSERT.into('PurchaseItems').entries({ purchase_ID: newPurchase.ID, item_ID, quantity })
+            
+            await INSERT.into('Purchases').entries({
+                customer_ID,
+                status: 'Shopping',
+                purchaseItems: [...availableItemsIDs].map(([item_ID, quantity]) => ({
+                    item_ID,
+                    quantity
+                }))
+            })
             //cant use next() for default insertion of new rows as this is not a overriden version of CREATE. This is an action.
         }
 
@@ -190,19 +196,49 @@ module.exports = function () {
     })
 
 
-    this.on('payForPurchase',async(req)=>{
-        const {customer_ID}=req.data;
+    this.on('payForPurchase', async (req) => {
+        const { customer_ID } = req.data;
         const purchase_ID = req.params[0].ID;
 
-        const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID,ID:purchase_ID });
-        if(!purchaseExists){
-            return req.reject(404,'Purchase Doesnt Exist')
+        const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
+        if (!purchaseExists) {
+            return req.reject(404, 'Purchase Doesnt Exist')
         }
-        if(purchaseExists.status==='Completed'){
-            return req.reject(400,'Purchase Already completed')
+        if (purchaseExists.status === 'Completed') {
+            return req.reject(400, 'Purchase Already completed')
         }
-        await UPDATE('Purchases').set({status:'Completed'}).where({ID:purchase_ID});
-        await UPDATE('Customers').set({ totalOrders:{'+=':1} }).where({ ID: customer_ID})
+        await UPDATE('Purchases').set({ status: 'Completed' }).where({ ID: purchase_ID });
+        await UPDATE('Customers').set({ totalOrders: { '+=': 1 } }).where({ ID: customer_ID })
+    })
+
+
+    this.on('returnPurchase', async (req) => {
+        const { customer_ID } = req.data;
+        const purchase_ID = req.params[0].ID;
+
+        const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
+        if (!purchaseExists) {
+            return req.reject(404, 'Purchase Doesnt Exist')
+        }
+        if (purchaseExists.status === 'Shopping') {
+            return req.reject(400, 'Purchase Not completed. Refunds are done only for Paid Purchases. Please Remove Item')
+        }
+        if (purchaseExists.status === 'PurchaseReturnedAmountRefunded') {
+            return req.reject(400, "Purchased already returned and Refunded");
+        }
+
+        if (purchaseExists.status === 'Completed') {
+            const purchaseItems = await SELECT.from('PurchaseItems').columns('item_ID', 'quantity').where({ purchase_ID: purchase_ID })
+            for (const row of purchaseItems) {
+                const item_ID = row.item_ID;
+                const quantity = row.quantity;
+                await UPDATE('Items').set({ totStocks: { '+=': quantity } }).where({ ID: item_ID });
+            }
+            await UPDATE('Customers').set({ totalOrders: { '-=': 1 } }).where({ ID: customer_ID })
+            await UPDATE('Purchases').set({ status: 'PurchaseReturnedAmountRefunded' }).where({ ID: purchase_ID, customer_ID: customer_ID })
+        }
+
+
     })
 
 

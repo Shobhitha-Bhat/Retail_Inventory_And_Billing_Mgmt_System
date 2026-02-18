@@ -31,7 +31,7 @@ entity Purchases : cuid, managed {
                         on purchaseItems.purchase = $self;
     status        : String enum {
         Shopping;
-        Paid;
+        Completed;
         PurchaseReturnedAmountRefunded;
     } default 'Shopping';
 }
