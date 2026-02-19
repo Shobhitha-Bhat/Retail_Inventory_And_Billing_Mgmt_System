@@ -11,7 +11,7 @@ module.exports = function () {
         }
     })
 
-
+    // =====================================================================================================================
     //check if the item already exists.  using the itemname and not the itemID
     //if yes...just restock it...(increment totStock)
     //else create a new item row. ie., skip back to normal create 
@@ -29,7 +29,7 @@ module.exports = function () {
 
     })
 
-
+    // =======================================================================================================================
     //Action :  ReStock Items
     this.on('reStockItems', async (req) => {
         const { newStocks } = req.data;
@@ -41,14 +41,14 @@ module.exports = function () {
         }
         await UPDATE('Items').set({ totStocks: item.totStocks + newStocks }).where({ ID })
     })
-
+    // ===================================================================================================================
 
     this.before('DELETE', 'Customers', (req) => {
         req.reject(403, "Once a customer registers to the company's database, can't be deleted.")
 
     })
 
-
+    // ===================================================================================================================
 
     //deprecated as there is not Standard CREATE Purchase
     // this.before('CREATE', 'Purchases', (req) => {
@@ -150,7 +150,6 @@ module.exports = function () {
         if (!purchaseExists) {
 
             //INSERT the NEW purchase row into purchases also Purchaseitems
-
             // const newPurchase = await INSERT.into('Purchases').entries({ // customer_ID: customer_ID, status: 'Shopping' // }) 
             // // for (const [item_ID, quantity] of availableItemsIDs) { 
             // // await INSERT.into('PurchaseItems').entries({ purchase_ID: newPurchase.ID, item_ID, quantity })
@@ -165,7 +164,6 @@ module.exports = function () {
             })
             //cant use next() for default insertion of new rows as this is not a overriden version of CREATE. This is an action.
         }
-
         //If a pending purchase by a customer Exists
         else {
             //For each available Item in the addItemToPurchase order
@@ -182,7 +180,6 @@ module.exports = function () {
                     })
                 }
             }
-
         }
         for (const [item_ID, quantity] of availableItemsIDs) {
             await UPDATE('Items').set({ totStocks: { '-=': quantity } }).where({ ID: item_ID })
@@ -190,11 +187,12 @@ module.exports = function () {
 
     })
 
+    // =======================================================================================================================================
 
     this.on('DELETE', 'Purchases', (req) => {
         req.reject(403, "Purchase Already recorded in company's Database. Cannot Delete.")
     })
-
+    // =======================================================================================================================================
 
     this.on('payForPurchase', async (req) => {
         const { customer_ID } = req.data;
@@ -207,12 +205,22 @@ module.exports = function () {
         if (purchaseExists.status === 'Completed') {
             return req.reject(400, 'Purchase Already completed')
         }
+
+        const itemsInPurchase = await SELECT.from('PurchaseItems').where({ purchase_ID, itemStatus: 'Shopping' })
+        if (itemsInPurchase.length === 0) {
+            return req.reject(400, 'No items in Purchase.')
+        } else {
+            for (const row of itemsInPurchase) {
+                await UPDATE('PurchaseItems').set({ itemStatus: 'ItemPaid' }).where({ purchase_ID, item_ID: row.item_ID });
+            }
+        }
         await UPDATE('Purchases').set({ status: 'Completed' }).where({ ID: purchase_ID });
         await UPDATE('Customers').set({ totalOrders: { '+=': 1 } }).where({ ID: customer_ID })
     })
 
+    // ==========================================================================================================================================
 
-    this.on('returnPurchase', async (req) => {
+    this.on('returnEntirePurchase', async (req) => {
         const { customer_ID } = req.data;
         const purchase_ID = req.params[0].ID;
 
@@ -221,69 +229,136 @@ module.exports = function () {
             return req.reject(404, 'Purchase Doesnt Exist')
         }
         if (purchaseExists.status === 'Shopping') {
-            return req.reject(400, 'Purchase Not completed. Refunds are done only for Paid Purchases. Please Remove Item')
+            return req.reject(400, 'Purchase Not completed. Returns/Refunds are accepted only for Paid Purchases.')
         }
         if (purchaseExists.status === 'PurchaseReturnedAmountRefunded') {
-            return req.reject(400, "Purchased already returned and Refunded");
+            return req.reject(400, "Purchase already returned and Refunded");
         }
-
         if (purchaseExists.status === 'Completed') {
-            const purchaseItems = await SELECT.from('PurchaseItems').columns('item_ID', 'quantity').where({ purchase_ID: purchase_ID })
-            for (const row of purchaseItems) {
-                const item_ID = row.item_ID;
-                const quantity = row.quantity;
-                await UPDATE('Items').set({ totStocks: { '+=': quantity } }).where({ ID: item_ID });
+            const purchaseItems = await SELECT.from('PurchaseItems').columns('item_ID', 'quantity').where({ purchase_ID: purchase_ID, itemStatus: 'ItemPaid' })
+            if (purchaseItems.length > 0) {
+                for (const row of purchaseItems) {
+                    const item_ID = row.item_ID;
+                    const quantity = row.quantity;
+                    await UPDATE('Items').set({ totStocks: { '+=': quantity } }).where({ ID: item_ID });
+                    await UPDATE('PurchaseItems').set({ itemStatus: 'ItemReturnedAmountRefunded' }).where({ purchase_ID, item_ID: item_ID })
+                }
+                await UPDATE('Customers').set({ totalOrders: { '-=': 1 } }).where({ ID: customer_ID })
+                await UPDATE('Purchases').set({ status: 'PurchaseReturnedAmountRefunded' }).where({ ID: purchase_ID, customer_ID: customer_ID })
+            } else {
+                return req.reject(400, 'No items in Purchase to return')
             }
-            await UPDATE('Customers').set({ totalOrders: { '-=': 1 } }).where({ ID: customer_ID })
-            await UPDATE('Purchases').set({ status: 'PurchaseReturnedAmountRefunded' }).where({ ID: purchase_ID, customer_ID: customer_ID })
+        } else {
+            return req.reject(400, 'Purchase is Empty. Buy Items.')
         }
-
 
     })
 
+    // =============================================================================================================================================
 
-    this.on('removeItemsFromPurchase', async(req)=>{
+    this.on('removeItemsFromShopping', async (req) => {
         const { customer_ID } = req.data;
         const purchase_ID = req.params[0].ID;
-        const missingItemsFromPurchase=[];
+        const missingItemsFromPurchase = [];
         const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
         if (!purchaseExists) {
             return req.reject(404, 'Purchase Doesnt Exist')
         }
         if (purchaseExists.status === 'Completed') {
-            return req.reject(400, 'Purchase Already Paid. Only refund Possible.')
+            return req.reject(400, 'Purchase Already Paid. Only Return-Refund Possible.')
         }
         if (purchaseExists.status === 'PurchaseReturnedAmountRefunded') {
-            return req.reject(400, 'Purchase Already Cancelled.')
+            return req.reject(400, 'Purchase Already Returned and Refunded.')
         }
         if (purchaseExists.status === 'Shopping') {
-            const ItemsinPurchaseExists = await SELECT.from('PurchaseItems').where({purchase_ID})
-
-            if(ItemsinPurchaseExists){
-                for(const row of req.data.purchaseItems){
-                    const item_ID=row.item_ID;
+            const ItemsinPurchaseExists = await SELECT.from('PurchaseItems').where({ purchase_ID ,itemStatus:'Shopping'})
+            if (ItemsinPurchaseExists.length > 0) {
+                for (const row of req.data.purchaseItems) {
+                    const item_ID = row.item_ID;
                     const quantity = row.quantity;
-                    const itemExists = await SELECT.one.from('PurchaseItems').where({purchase_ID,item_ID:item_ID})
-                    if(itemExists){
+                    const itemExists = await SELECT.one.from('PurchaseItems').where({ purchase_ID, item_ID: item_ID })
+                    if (itemExists) {
                         await UPDATE('Items').set({ totStocks: { '+=': quantity } }).where({ ID: item_ID });
-                        await DELETE.from('PurchaseItems').where({purchase_ID:purchase_ID,item_ID:item_ID})
+                        if(itemExists.quantity-quantity ===0){
+                            await DELETE.from('PurchaseItems').where({ purchase_ID: purchase_ID, item_ID: item_ID })
+                        }
+                        else{
+                            await UPDATE('PurchaseItems').set({quantity:{'-=':quantity}}).where({purchase_ID: purchase_ID, item_ID: item_ID})
+                        }
                     }
-                    else{
+                    else {
                         missingItemsFromPurchase.push(item_ID)
                     }
-                    
+
                 }
                 if (missingItemsFromPurchase.length > 0) {
-               return { message: `Some items are not in Purchase List - ${JSON.stringify(missingItemsFromPurchase)}` };
-           }
-           return { message: "Items removed from purchase and reStocked"};
+                    return { message: `Some items are not in Purchase List - ${JSON.stringify(missingItemsFromPurchase)}` };
+                }
+                return { message: "Items removed from purchase and reStocked" };
             }
-
-            else{
-                return {message:"Item already Removed"}
+            else {
+                return { message: "No Items in purchasing. Item already Removed" }
             }
-            }
+        }
     })
+
+    // ==========================================================================================================================================
+
+    this.on('returnItemsFromPaidPurchase', async (req) => {
+        const { customer_ID } = req.data;
+        const purchase_ID = req.params[0].ID;
+        const missingItemsFromPurchase = [];
+        const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
+        if (!purchaseExists) {
+            return req.reject(404, 'Purchase Doesnt Exist')
+        }
+        if (purchaseExists.status === 'PurchaseReturnedAmountRefunded') {
+            return req.reject(400, 'Purchase Already Returned and Refunded.')
+        }
+        if (purchaseExists.status === 'Shopping') {
+            return req.reject(400, 'Purchase Not Paid.Remove Items.')
+        }
+        if (purchaseExists.status === 'Completed') {
+            let ItemsinPurchaseExists = await SELECT.from('PurchaseItems').where({ purchase_ID ,itemStatus:'ItemPaid'})
+            if (ItemsinPurchaseExists.length > 0) {
+                for (const row of req.data.purchaseItems) {
+                    const item_ID = row.item_ID;
+                    const quantity = row.quantity;
+                    const itemExists = await SELECT.one.from('PurchaseItems').where({ purchase_ID, item_ID: item_ID })
+                    if (itemExists) {
+                        await UPDATE('Items').set({ totStocks: { '+=': quantity } }).where({ ID: item_ID });
+                        if(itemExists.quantity-quantity ===0){
+                            await UPDATE('PurchaseItems').set({ itemStatus: 'ItemReturnedAmountRefunded' }).where({ purchase_ID: purchase_ID, item_ID: item_ID })
+                        }else{
+                            //itemStatus let it be ItemPaid itself, but reduce quantity
+                            await UPDATE('PurchaseItems').set({ quantity:{'-=':quantity} }).where({ purchase_ID: purchase_ID, item_ID: item_ID })
+                        }
+                    }
+                    else {
+                        missingItemsFromPurchase.push(item_ID)
+                    }
+                }
+                if (missingItemsFromPurchase.length > 0) {
+                    return { message: `Some items are not in Purchase List - ${JSON.stringify(missingItemsFromPurchase)}` };
+                }
+                                                                            //rare cases that an item is still in shopping even when the purchase is already paid
+                ItemsinPurchaseExists = await SELECT.from('PurchaseItems').where({ purchase_ID ,itemStatus: {in: ['ItemPaid','Shopping']}})
+                if(ItemsinPurchaseExists.length === 0){
+                    await UPDATE('Purchases').set({status:'PurchaseReturnedAmountRefunded'}).where({customer_ID: customer_ID, ID: purchase_ID});
+                }else{
+                    await UPDATE('Purchases').set({status:'Completed'}).where({customer_ID: customer_ID, ID: purchase_ID});
+                }
+                return { message: "Items Returned from purchase and reStocked" };
+            }
+            else {
+                return { message: "No Items in purchase. Item already Returned/Removed" }
+            }
+        }
+
+
+    })
+
+
 
 
 

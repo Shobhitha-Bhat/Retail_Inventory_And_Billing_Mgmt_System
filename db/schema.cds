@@ -40,4 +40,9 @@ entity PurchaseItems : cuid, managed {
     purchase : Association to Purchases;
     item     : Association to Items;
     quantity : Integer;
+    itemStatus:String enum {
+        Shopping;
+        ItemPaid;
+        ItemReturnedAmountRefunded;
+    } default 'Shopping';
 }

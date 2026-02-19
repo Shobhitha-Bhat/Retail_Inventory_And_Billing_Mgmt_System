@@ -11,14 +11,22 @@ service AdminService {
 
     entity Purchases as projection on db.Purchases
         actions {
-            action removeItemsFromPurchase(customer_ID: UUID,
-                                           purchaseItems: many {
+            action    removeItemsFromShopping(customer_ID: UUID,
+                                              purchaseItems: many {
                 item_ID  : UUID;
                 quantity : Integer
-            });
-            action payForPurchase(customer_ID: UUID, purchase_ID: UUID);
-            action returnPurchase(customer_ID: UUID);
-            // action updateQuantityofItems(); same as purchaseItems
+            }) returns String;
+
+            action    payForPurchase(customer_ID: UUID, purchase_ID: UUID);
+
+            action    returnItemsFromPaidPurchase(customer_ID: UUID,
+                                              purchaseItems: many {
+                item_ID  : UUID;
+                quantity : Integer
+            }) ;
+
+            action returnEntirePurchase(customer_ID: UUID);
+        // action updateQuantityofItems(); same as purchaseItems
         };
 
     action purchaseItems(customer_ID: UUID,

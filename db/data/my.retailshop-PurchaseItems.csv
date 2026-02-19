@@ -1,1 +1,1 @@
-ID,purchase_ID,item_ID,quantity,createdAt,createdBy,modifiedAt,modifiedBy
+ID,purchase_ID,item_ID,quantity,itemStatus,createdAt,createdBy,modifiedAt,modifiedBy
