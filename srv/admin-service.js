@@ -15,19 +15,45 @@ module.exports = function () {
     //check if the item already exists.  using the itemname and not the itemID
     //if yes...just restock it...(increment totStock)
     //else create a new item row. ie., skip back to normal create 
-    this.on('CREATE', 'Items', async (req, next) => {
-        const { itemName, totStocks, category_ID } = req.data;
+    // this.on('CREATE', 'Items', async (req, next) => {
+    //     const { itemName, totStocks, category_ID } = req.data;
 
-        const itemExists = await SELECT.one.from('Items').where({ itemName, category_ID })
+    //     const itemExists = await SELECT.one.from('Items').where({ itemName, category_ID })
 
-        if (itemExists) {
-            await UPDATE('Items').set({ totStocks: itemExists.totStocks + totStocks }).where({ ID: itemExists.ID })
-            // req.reject(200, "Item ReStocked.No new Item Added.")
-            return { message: "Item reStocked. No new item added." }
-        }
-        return next();
+    //     if (itemExists) {
+    //         await UPDATE('Items').set({ totStocks: itemExists.totStocks + totStocks }).where({ ID: itemExists.ID })
+    //         // req.reject(200, "Item ReStocked.No new Item Added.")
+    //         // return { message: "Item reStocked. No new item added." }
+    //         return req.reply({ 
+    //         ...itemExists, 
+    //         totStocks: itemExists.totStocks + totStocks 
+    //     });
+    //     }
+    //     return next();
 
-    })
+    // })
+
+   this.before('SAVE', 'Items', async (req) => {
+    const { itemName, totStocks, category_ID } = req.data;
+
+    // 1. Look for an existing item in the ACTUAL table (not draft)
+    const existingItem = await SELECT.one.from('Items').where({ 
+        itemName, 
+        category_ID 
+    });
+
+    if (existingItem) {
+        // 2. Update the existing record instead of creating a new one
+        const newTotal = Number(existingItem.totStocks) + Number(totStocks);
+        await UPDATE('Items')
+            .set({ totStocks: newTotal })
+            .where({ ID: existingItem.ID });
+
+        // 3. CANCEL the current save request. 
+        // This prevents the draft from being saved as a NEW duplicate record.
+        return req.reject(400, `Item already exists. Stock updated to ${newTotal}`);
+    }
+});
 
     // =======================================================================================================================
     //Action :  ReStock Items
@@ -132,7 +158,7 @@ module.exports = function () {
 
     }
 
-    this.on('purchaseItems', async (req) => {
+    this.on('purchasenewItems', async (req) => {
         if (!req.data.purchaseItems || req.data.purchaseItems.length === 0) {
             return req.reject(400, 'Purchase must contain atleast 1 item.')
         }
@@ -195,13 +221,16 @@ module.exports = function () {
     // =======================================================================================================================================
 
     this.on('payForPurchase', async (req) => {
-        const { customer_ID } = req.data;
-        const purchase_ID = req.params[0].ID;
+        // const { customer_ID } = req.data;
+        const customer_ID = req.params[0].ID;
+        const purchase_ID = req.params[1].ID;
 
         const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
+        // const purchaseExists = await SELECT.one.from('Purchases').where({ ID: purchase_ID });
         if (!purchaseExists) {
             return req.reject(404, 'Purchase Doesnt Exist')
         }
+        // const customer_ID=purchaseExists.customer_ID;
         if (purchaseExists.status === 'Completed') {
             return req.reject(400, 'Purchase Already completed')
         }
@@ -216,13 +245,18 @@ module.exports = function () {
         }
         await UPDATE('Purchases').set({ status: 'Completed' }).where({ ID: purchase_ID });
         await UPDATE('Customers').set({ totalOrders: { '+=': 1 } }).where({ ID: customer_ID })
+        req.info('Successfully Paid.')
+        //inorder to show updated content without refreshing fiori page
+        return await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
     })
 
     // ==========================================================================================================================================
 
     this.on('returnEntirePurchase', async (req) => {
-        const { customer_ID } = req.data;
-        const purchase_ID = req.params[0].ID;
+        // const { customer_ID } = req.data;
+        // const purchase_ID = req.params[0].ID;
+        const customer_ID = req.params[0].ID;
+        const purchase_ID = req.params[1].ID;
 
         const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
         if (!purchaseExists) {
@@ -245,6 +279,7 @@ module.exports = function () {
                 }
                 await UPDATE('Customers').set({ totalOrders: { '-=': 1 } }).where({ ID: customer_ID })
                 await UPDATE('Purchases').set({ status: 'PurchaseReturnedAmountRefunded' }).where({ ID: purchase_ID, customer_ID: customer_ID })
+                return await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, ID: purchase_ID });
             } else {
                 return req.reject(400, 'No items in Purchase to return')
             }

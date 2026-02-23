@@ -22,7 +22,7 @@ entity Categories : cuid, managed {
 entity Items : cuid, managed {
     itemName  : String;
     category  : Association to Categories;
-    totStocks : Integer default 0;
+    totStocks : Integer;
 }
 
 entity Purchases : cuid, managed {
