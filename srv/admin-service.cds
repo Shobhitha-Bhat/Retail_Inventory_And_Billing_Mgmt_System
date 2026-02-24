@@ -14,11 +14,7 @@ service AdminService {
 
     entity Purchases     as projection on db.Purchases
         actions {
-            action removeItemsFromShopping(customer_ID: UUID,
-                                           purchaseItems: many {
-                item_ID  : UUID;
-                quantity : Integer
-            })                            returns String;
+            
 
             // action    payForPurchase(customer_ID: UUID, purchase_ID: UUID);
             action payForPurchase()       returns Purchases;
@@ -35,15 +31,30 @@ service AdminService {
 
     annotate Purchases with @odata.draft.enabled;
 
-    entity PurchaseItems as projection on db.PurchaseItems
-        actions {
-            action returnItemsFromPaidPurchase(customer_ID: UUID,
-                                               purchaseItems: many {
-                item_ID  : UUID;
-                quantity : Integer
-            });
+    entity PurchaseItems as projection on db.PurchaseItems actions {
+             action returnItemsFromPaidPurchase() returns PurchaseItems;
+            action removeItemsFromShopping() returns PurchaseItems;
+         };
+//     entity PurchaseItems as projection on db.PurchaseItems actions {
+//     // Defining it here makes it a BOUND action.
+//     // Fiori will now show checkboxes because it needs a specific row ID.
+//     action removeItemsFromShopping() returns PurchaseItems;
+//     action returnItemsFromPaidPurchase() returns PurchaseItems;
+// };
+            // action returnItemsFromPaidPurchase(customer_ID: UUID,
+            //                                    purchaseItems: many {
+            //     item_ID  : UUID;
+            //     quantity : Integer
+            // }) returns String;
+            // action removeItemsFromShopping(customer_ID: UUID,
+            //                                purchaseItems: many {
+            //     item_ID  : UUID;
+            //     quantity : Integer
+            // })                            returns String;
 
-        };
+
+
+        
 
     action purchasenewItems(customer_ID: UUID,
                             purchaseItems: many {

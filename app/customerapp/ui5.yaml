@@ -2,7 +2,7 @@
 
 specVersion: "4.0"
 metadata:
-  name: adminapp
+  name: customerapp
 type: application
 server:
   customMiddleware:
