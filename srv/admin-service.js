@@ -179,61 +179,118 @@ module.exports = function () {
 
     }
 
-    this.on('purchasenewItems', async (req) => {
-        if (!req.data.purchaseItems || req.data.purchaseItems.length === 0) {
-            return req.reject(400, 'Purchase must contain atleast 1 item.')
-        }
-        const { customer_ID } = req.data;
-        //Check if Purchase from that customer exists and in Shopping state:
-        const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, status: 'Shopping' });
+    // this.on('purchasenewItems', async (req) => {
+    //     if (!req.data.purchaseItems || req.data.purchaseItems.length === 0) {
+    //         return req.reject(400, 'Purchase must contain atleast 1 item.')
+    //     }
+    //     const { customer_ID } = req.data;
+    //     //Check if Purchase from that customer exists and in Shopping state:
+    //     const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, status: 'Shopping' });
 
-        const { missingItemsIDs, lowStockItemsIDs, availableItemsIDs } = await find_Available_Missing_LowStockItems(req.data.purchaseItems);
+    //     const { missingItemsIDs, lowStockItemsIDs, availableItemsIDs } = await find_Available_Missing_LowStockItems(req.data.purchaseItems);
 
-        if (missingItemsIDs.size > 0 || lowStockItemsIDs.size > 0) {
-            // return { message: `Unavailable Items: ${JSON.stringify([...missingItemsIDs])} and Items with less Stock and Required ${JSON.stringify([...lowStockItemsIDs])} ` }
-            req.reject(400, `Unavailable Items: ${JSON.stringify([...missingItemsIDs])} and Items with less Stock and Required ${JSON.stringify([...lowStockItemsIDs])} `)
-        }
+    //     if (missingItemsIDs.size > 0 || lowStockItemsIDs.size > 0) {
+    //         // return { message: `Unavailable Items: ${JSON.stringify([...missingItemsIDs])} and Items with less Stock and Required ${JSON.stringify([...lowStockItemsIDs])} ` }
+    //         req.reject(400, `Unavailable Items: ${JSON.stringify([...missingItemsIDs])} and Items with less Stock and Required ${JSON.stringify([...lowStockItemsIDs])} `)
+    //     }
 
-        //If no Purchase exists create a new Purchase
-        if (!purchaseExists) {
+    //     //If no Purchase exists create a new Purchase
+    //     if (!purchaseExists) {
 
-            //INSERT the NEW purchase row into purchases also Purchaseitems
-            // const newPurchase = await INSERT.into('Purchases').entries({ // customer_ID: customer_ID, status: 'Shopping' // }) 
-            // // for (const [item_ID, quantity] of availableItemsIDs) { 
-            // // await INSERT.into('PurchaseItems').entries({ purchase_ID: newPurchase.ID, item_ID, quantity })
+    //         //INSERT the NEW purchase row into purchases also Purchaseitems
+    //         // const newPurchase = await INSERT.into('Purchases').entries({ // customer_ID: customer_ID, status: 'Shopping' // }) 
+    //         // // for (const [item_ID, quantity] of availableItemsIDs) { 
+    //         // // await INSERT.into('PurchaseItems').entries({ purchase_ID: newPurchase.ID, item_ID, quantity })
 
-            await INSERT.into('Purchases').entries({
-                customer_ID,
-                status: 'Shopping',
-                purchaseItems: [...availableItemsIDs].map(([item_ID, quantity]) => ({
-                    item_ID,
-                    quantity
-                }))
-            })
-            //cant use next() for default insertion of new rows as this is not a overriden version of CREATE. This is an action.
-        }
-        //If a pending purchase by a customer Exists
-        else {
-            //For each available Item in the addItemToPurchase order
-            for (const [item_ID, quantity] of availableItemsIDs) {
-                //Check If items already exists in the purchase..
-                const itemExistsinPurchase = await SELECT.one.from('PurchaseItems').where({ purchase_ID: purchaseExists.ID, item_ID })
-                if (itemExistsinPurchase) {
-                    await UPDATE('PurchaseItems').set({ quantity: { '+=': quantity } }).where({ item_ID: item_ID, purchase_ID: purchaseExists.ID })
-                }
-                else {
-                    await INSERT.into('PurchaseItems').entries({
-                        purchase_ID: purchaseExists.ID,
-                        item_ID: item_ID, quantity: quantity
-                    })
-                }
-            }
-        }
-        for (const [item_ID, quantity] of availableItemsIDs) {
-            await UPDATE('Items').set({ totStocks: { '-=': quantity } }).where({ ID: item_ID })
-        }
+    //         await INSERT.into('Purchases').entries({
+    //             customer_ID,
+    //             status: 'Shopping',
+    //             purchaseItems: [...availableItemsIDs].map(([item_ID, quantity]) => ({
+    //                 item_ID,
+    //                 quantity
+    //             }))
+    //         })
+    //         //cant use next() for default insertion of new rows as this is not a overriden version of CREATE. This is an action.
+    //     }
+    //     //If a pending purchase by a customer Exists
+    //     else {
+    //         //For each available Item in the addItemToPurchase order
+    //         for (const [item_ID, quantity] of availableItemsIDs) {
+    //             //Check If items already exists in the purchase..
+    //             const itemExistsinPurchase = await SELECT.one.from('PurchaseItems').where({ purchase_ID: purchaseExists.ID, item_ID })
+    //             if (itemExistsinPurchase) {
+    //                 await UPDATE('PurchaseItems').set({ quantity: { '+=': quantity } }).where({ item_ID: item_ID, purchase_ID: purchaseExists.ID })
+    //             }
+    //             else {
+    //                 await INSERT.into('PurchaseItems').entries({
+    //                     purchase_ID: purchaseExists.ID,
+    //                     item_ID: item_ID, quantity: quantity
+    //                 })
+    //             }
+    //         }
+    //     }
+    //     for (const [item_ID, quantity] of availableItemsIDs) {
+    //         await UPDATE('Items').set({ totStocks: { '-=': quantity } }).where({ ID: item_ID })
+    //     }
 
-    })
+    // })
+
+    // this.on('CREATE','Purchases' ,async (req) => {
+    //     if (!req.data.purchaseItems || req.data.purchaseItems.length === 0) {
+    //         return req.reject(400, 'Purchase must contain atleast 1 item.')
+    //     }
+    //     const { customer_ID } = req.data;
+    //     //Check if Purchase from that customer exists and in Shopping state:
+    //     const purchaseExists = await SELECT.one.from('Purchases').where({ customer_ID: customer_ID, status: 'Shopping' });
+
+    //     const { missingItemsIDs, lowStockItemsIDs, availableItemsIDs } = await find_Available_Missing_LowStockItems(req.data.purchaseItems);
+
+    //     if (missingItemsIDs.size > 0 || lowStockItemsIDs.size > 0) {
+    //         // return { message: `Unavailable Items: ${JSON.stringify([...missingItemsIDs])} and Items with less Stock and Required ${JSON.stringify([...lowStockItemsIDs])} ` }
+    //         req.reject(400, `Unavailable Items: ${JSON.stringify([...missingItemsIDs])} and Items with less Stock and Required ${JSON.stringify([...lowStockItemsIDs])} `)
+    //     }
+
+    //     //If no Purchase exists create a new Purchase
+    //     if (!purchaseExists) {
+
+    //         //INSERT the NEW purchase row into purchases also Purchaseitems
+    //         // const newPurchase = await INSERT.into('Purchases').entries({ // customer_ID: customer_ID, status: 'Shopping' // }) 
+    //         // // for (const [item_ID, quantity] of availableItemsIDs) { 
+    //         // // await INSERT.into('PurchaseItems').entries({ purchase_ID: newPurchase.ID, item_ID, quantity })
+
+    //         await INSERT.into('Purchases').entries({
+    //             customer_ID,
+    //             status: 'Shopping',
+    //             purchaseItems: [...availableItemsIDs].map(([item_ID, quantity]) => ({
+    //                 item_ID,
+    //                 quantity
+    //             }))
+    //         })
+    //         //cant use next() for default insertion of new rows as this is not a overriden version of CREATE. This is an action.
+    //     }
+    //     //If a pending purchase by a customer Exists
+    //     else {
+    //         //For each available Item in the addItemToPurchase order
+    //         for (const [item_ID, quantity] of availableItemsIDs) {
+    //             //Check If items already exists in the purchase..
+    //             const itemExistsinPurchase = await SELECT.one.from('PurchaseItems').where({ purchase_ID: purchaseExists.ID, item_ID })
+    //             if (itemExistsinPurchase) {
+    //                 await UPDATE('PurchaseItems').set({ quantity: { '+=': quantity } }).where({ item_ID: item_ID, purchase_ID: purchaseExists.ID })
+    //             }
+    //             else {
+    //                 await INSERT.into('PurchaseItems').entries({
+    //                     purchase_ID: purchaseExists.ID,
+    //                     item_ID: item_ID, quantity: quantity
+    //                 })
+    //             }
+    //         }
+    //     }
+    //     for (const [item_ID, quantity] of availableItemsIDs) {
+    //         await UPDATE('Items').set({ totStocks: { '-=': quantity } }).where({ ID: item_ID })
+    //     }
+
+    // })
+    
 
     // =======================================================================================================================================
 

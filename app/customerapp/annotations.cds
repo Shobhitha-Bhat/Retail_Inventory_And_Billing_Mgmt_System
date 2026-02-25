@@ -18,6 +18,11 @@ annotate service.Customers with @(
                 Label : 'totalOrders',
                 Value : totalOrders,
             },
+            // {
+            //     $Type : 'UI.DataFieldForAction',
+            //     Action : 'AdminService.purchasenewItems',
+            //     Label : 'purchasenewItems',
+            // },
         ],
     },
     UI.Facets : [
@@ -50,11 +55,6 @@ annotate service.Customers with @(
             Label : 'totalOrders',
             Value : totalOrders,
         },
-        {
-            $Type : 'UI.DataFieldForAction',
-            Action : 'AdminService.EntityContainer/purchasenewItems',
-            Label : 'purchasenewItems',
-        },
     ],
     UI.HeaderInfo : {
         Title : {
@@ -69,6 +69,9 @@ annotate service.Customers with @(
         },
         TypeImageUrl : 'sap-icon://customer',
     },
+    UI.Identification : [
+        
+    ],
 );
 
 annotate service.Purchases with @(
@@ -102,6 +105,13 @@ annotate service.Purchases with @(
             Target : 'purchaseItems/@UI.LineItem#PurchaseItems',
         },
     ],
+    UI.LineItem #AddNewPurchase : [
+        {
+            $Type : 'UI.DataFieldForAction',
+            Action : 'AdminService.EntityContainer/purchasenewItems',
+            Label : 'purchasenewItems',
+        },
+    ],
 );
 
 annotate service.PurchaseItems with @(
@@ -123,11 +133,6 @@ annotate service.PurchaseItems with @(
         },
         {
             $Type : 'UI.DataFieldForAction',
-            Action : 'AdminService.removeItemsFromShopping',
-            Label : 'removeItemsFromShopping',
-        },
-        {
-            $Type : 'UI.DataFieldForAction',
             Action : 'AdminService.returnItemsFromPaidPurchase',
             Label : 'returnItemsFromPaidPurchase',
         },
@@ -135,6 +140,11 @@ annotate service.PurchaseItems with @(
             $Type : 'UI.DataField',
             Value : quantity,
             Label : 'quantity',
+        },
+        {
+            $Type : 'UI.DataFieldForAction',
+            Action : 'AdminService.removeItemsFromShopping',
+            Label : 'removeItemsFromShopping',
         },
     ]
 );
@@ -161,3 +171,71 @@ annotate AdminService.PurchaseItems.removeItemsFromShopping with @Common.SideEff
         '../status'      // Refresh specific properties if needed
     ]
 };
+annotate service.Items with {
+    category @(
+        Common.ValueList : {
+            $Type : 'Common.ValueListType',
+            CollectionPath : 'Category',
+            Parameters : [
+                {
+                    $Type : 'Common.ValueListParameterInOut',
+                    LocalDataProperty : category_ID,
+                    ValueListProperty : 'ID',
+                },
+            ],
+        },
+        Common.ValueListWithFixedValues : true,
+)};
+
+annotate service.Category with {
+    ID @Common.Text : categoryName
+};
+
+
+
+//for valuehelp purchaseitem dropdown
+// Updated path to reach INSIDE the "many" structure
+// annotate service.purchasenewItems.purchaseItems with {
+//     category_ID @(
+//         Common.Label : 'Category',
+//         Common.ValueList : {
+//             $Type : 'Common.ValueListType',
+//             CollectionPath : 'Category',
+//             Parameters : [
+//                 {
+//                     $Type : 'Common.ValueListParameterInOut',
+//                     LocalDataProperty : category_ID,
+//                     ValueListProperty : 'ID',
+//                 },
+//                 {
+//                     $Type : 'Common.ValueListParameterDisplayOnly',
+//                     ValueListProperty : 'categoryName',
+//                 }
+//             ],
+//         }
+//     );
+
+//     item_ID @(
+//         Common.Label : 'Item',
+//         Common.ValueList : {
+//             $Type : 'Common.ValueListType',
+//             CollectionPath : 'Items',
+//             Parameters : [
+//                 {
+//                     $Type : 'Common.ValueListParameterIn',
+//                     LocalDataProperty : category_ID,
+//                     ValueListProperty : 'category_ID',
+//                 },
+//                 {
+//                     $Type : 'Common.ValueListParameterInOut',
+//                     LocalDataProperty : item_ID,
+//                     ValueListProperty : 'ID',
+//                 },
+//                 {
+//                     $Type : 'Common.ValueListParameterDisplayOnly',
+//                     ValueListProperty : 'itemName',
+//                 }
+//             ],
+//         }
+//     );
+// };

@@ -10,7 +10,8 @@
     "watch-purchaseitemsapp": "cds watch --open purchaseitemsapp/index.html?sap-ui-xx-viewCache=false --livereload false",
     "watch-adminapp": "cds watch --open adminapp/index.html?sap-ui-xx-viewCache=false --livereload false",
     "watch-testoverview": "cds watch --open testoverview/index.html?sap-ui-xx-viewCache=false --livereload false",
-    "watch-categoryapp": "cds watch --open categoryapp/index.html?sap-ui-xx-viewCache=false --livereload false"
+    "watch-categoryapp": "cds watch --open categoryapp/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "watch-purchasesapp": "cds watch --open purchasesapp/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "cds": {
     "requires": {
@@ -44,6 +45,7 @@
     "app/testoverview",
     "app/categoryapp",
     "app/customerapp",
-    "app/categoryapp"
+    "app/categoryapp",
+    "app/purchasesapp"
   ]
 }
