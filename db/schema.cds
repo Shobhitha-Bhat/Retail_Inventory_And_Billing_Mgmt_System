@@ -16,7 +16,7 @@ entity Customers : cuid, managed {
 entity Categories : cuid, managed {
     categoryName : String;
     items        : Composition of many Items
-                       on items.category = $self;
+                       on items.category = $self @assert.target;
 }
 
 entity Items : cuid, managed {

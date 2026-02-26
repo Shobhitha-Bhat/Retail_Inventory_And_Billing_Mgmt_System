@@ -18,6 +18,14 @@ annotate service.Customers with @(
                 Label : 'totalOrders',
                 Value : totalOrders,
             },
+            {
+                $Type : 'UI.DataField',
+                Value : createdAt,
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : modifiedAt,
+            },
             // {
             //     $Type : 'UI.DataFieldForAction',
             //     Action : 'AdminService.purchasenewItems',
@@ -51,9 +59,24 @@ annotate service.Customers with @(
             Value : city,
         },
         {
-            $Type : 'UI.DataField',
+            $Type : 'UI.DataFieldForAnnotation',
+            Target : '@UI.DataPoint#totalOrders1',
             Label : 'totalOrders',
-            Value : totalOrders,
+        },
+        {
+            $Type : 'UI.DataFieldForAnnotation',
+            Target : '@Communication.Contact#contact',
+            Label : 'Contact Name',
+        },
+        {
+            $Type : 'UI.DataFieldForAnnotation',
+            Target : '@UI.Chart#totalOrders',
+            Label : 'totalOrders',
+        },
+        {
+            $Type : 'UI.DataFieldForAnnotation',
+            Target : '@UI.Chart#totalOrders1',
+            Label : 'totalOrders',
         },
     ],
     UI.HeaderInfo : {
@@ -70,6 +93,143 @@ annotate service.Customers with @(
         TypeImageUrl : 'sap-icon://customer',
     },
     UI.Identification : [
+        
+    ],
+    UI.DataPoint #totalOrders : {
+        Value : totalOrders,
+        Visualization : #Progress,
+        TargetValue : 100,
+    },
+    UI.DataPoint #totalOrders1 : {
+        Value : totalOrders,
+        Visualization : #Progress,
+        TargetValue : 100,
+    },
+    Communication.Contact #contact : {
+        $Type : 'Communication.ContactType',
+        fn : city,
+        title : createdBy,
+        role : modifiedBy,
+        org : modifiedBy,
+        tel : [
+            {
+                $Type : 'Communication.PhoneNumberType',
+                type : #cell,
+                uri : city,
+            },
+        ],
+        email : [
+            {
+                $Type : 'Communication.EmailAddressType',
+                type : #work,
+                address : name,
+            },
+        ],
+        adr : [
+            {
+                $Type : 'Communication.AddressType',
+                type : #work,
+                street : createdBy,
+                locality : city,
+                region : modifiedBy,
+                code : name,
+                country : createdBy,
+            },
+        ],
+        
+    },
+    UI.DataPoint #totalOrders2 : {
+        Value : totalOrders,
+        MinimumValue : 0,
+        MaximumValue : 100,
+    },
+    UI.Chart #totalOrders : {
+        ChartType : #Bullet,
+        Measures : [
+            totalOrders,
+        ],
+        MeasureAttributes : [
+            {
+                DataPoint : '@UI.DataPoint#totalOrders2',
+                Role : #Axis1,
+                Measure : totalOrders,
+            },
+        ],
+    },
+    UI.DataPoint #totalOrders3 : {
+        Value : totalOrders,
+        TargetValue : totalOrders,
+    },
+    UI.Chart #totalOrders1 : {
+        ChartType : #Donut,
+        Measures : [
+            totalOrders,
+        ],
+        MeasureAttributes : [
+            {
+                DataPoint : '@UI.DataPoint#totalOrders3',
+                Role : #Axis1,
+                Measure : totalOrders,
+            },
+        ],
+    },
+    UI.DataPoint #totalOrders4 : {
+        Value : totalOrders,
+        MaximumValue : totalOrders,
+    },
+    UI.Chart #totalOrders2 : {
+        ChartType : #Pie,
+        Measures : [
+            totalOrders,
+        ],
+        MeasureAttributes : [
+            {
+                DataPoint : '@UI.DataPoint#totalOrders4',
+                Role : #Axis1,
+                Measure : totalOrders,
+            },
+        ],
+    },
+    UI.SelectionPresentationVariant #tableView : {
+        $Type : 'UI.SelectionPresentationVariantType',
+        PresentationVariant : {
+            $Type : 'UI.PresentationVariantType',
+            Visualizations : [
+                '@UI.LineItem',
+            ],
+        },
+        SelectionVariant : {
+            $Type : 'UI.SelectionVariantType',
+            SelectOptions : [
+            ],
+        },
+        Text : 'Table View',
+    },
+    UI.LineItem #tableView : [
+    ],
+    UI.SelectionPresentationVariant #tableView1 : {
+        $Type : 'UI.SelectionPresentationVariantType',
+        PresentationVariant : {
+            $Type : 'UI.PresentationVariantType',
+            Visualizations : [
+                '@UI.LineItem#tableView',
+            ],
+        },
+        SelectionVariant : {
+            $Type : 'UI.SelectionVariantType',
+            SelectOptions : [
+            ],
+        },
+        Text : 'Table View 1',
+    },
+    UI.DataPoint #progress : {
+        $Type : 'UI.DataPointType',
+        Value : totalOrders,
+        Title : 'totalOrders',
+        TargetValue : 100,
+        Visualization : #Progress,
+    },
+    UI.HeaderFacets : [
         
     ],
 );
